@@ -71,7 +71,7 @@ def load_geojson():
 
 # --- Streamlit ---
 st.title("Loomulik iive Eesti maakondades")
-st.markdown("Visualiseeri loomulik iive aastate lõikes Statistikaameti andmete põhjal.")
+# ---st.markdown("Visualiseeri loomulik iive aastate lõikes Statistikaameti andmete põhjal.")---
 
 df = import_data()
 gdf = load_geojson()
