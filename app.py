@@ -1,15 +1,13 @@
-
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import requests
-import json
-from io import StringIO
 import tempfile
 import os
+import json
+from io import StringIO
 
-# --- Statistikaameti API päring ---
 STATISTIKAAMETI_API_URL = "https://andmed.stat.ee/api/v1/et/stat/RV032"
 
 JSON_PAYLOAD_STR ="""{
@@ -56,10 +54,10 @@ def import_data():
 
 @st.cache_data
 def load_geojson():
-    url = "https://gist.githubusercontent.com/nutiteq/1ab8f24f9a6ad2bb47da/raw/38034e1c0244c74285abf57ce152f13fdc7e9398/maakonnad.geojson"
+    url = "https://drive.google.com/uc?export=download&id=15PWvqdxtp6HHIQIftsmHl4pMmWvG8mQX"
     response = requests.get(url)
     if response.status_code != 200:
-        st.error("GeoJSON faili ei saanud alla laadida. Kood: " + str(response.status_code))
+        st.error("Ei suutnud geoandmeid alla laadida.")
         return None
     with tempfile.NamedTemporaryFile(delete=False, suffix=".geojson") as tmp_file:
         tmp_file.write(response.content)
@@ -68,7 +66,7 @@ def load_geojson():
     os.remove(tmp_path)
     return gdf
 
-# --- Streamlit rakendus ---
+# --- Streamlit ---
 st.title("Loomulik iive Eesti maakondades")
 st.markdown("Visualiseeri loomulik iive aastate lõikes Statistikaameti andmete põhjal.")
 
@@ -78,29 +76,29 @@ gdf = load_geojson()
 if df.empty or gdf is None:
     st.stop()
 
-# Veergude puhastamine
+# Veerunimed korda
 df.columns = df.columns.str.strip()
 
-# Aasta valik
+# Aastavalik
 aastad = sorted(df["Aasta"].unique())
 valitud_aasta = st.sidebar.selectbox("Vali aasta", aastad)
 df_aasta = df[df["Aasta"] == valitud_aasta]
 
-# Veerukontroll
+# Kontrollime, kas vajalikud veerud eksisteerivad
 required_cols = {"Mehed Loomulik iive", "Naised Loomulik iive", "Maakond"}
 if not required_cols.issubset(df_aasta.columns):
     st.error(f"Puuduvad vajalikud veerud: {required_cols - set(df_aasta.columns)}")
     st.write("Veerud:", df_aasta.columns.tolist())
     st.stop()
 
-# Arvuta loomulik iive kokku
+# Arvutame loomuliku iibe kokku
 df_aasta["Loomulik iive"] = df_aasta["Mehed Loomulik iive"] + df_aasta["Naised Loomulik iive"]
 df_pivot = df_aasta[["Maakond", "Loomulik iive"]]
 
-# Ühenda geoandmetega
+# Ühenda ruumiandmetega
 merged = gdf.merge(df_pivot, left_on="MNIMI", right_on="Maakond")
 
-# Visualiseeri kaart
+# Joonista kaart
 fig, ax = plt.subplots(figsize=(8, 6))
 merged.plot(
     column="Loomulik iive",
