@@ -66,7 +66,7 @@ def load_geojson():
     os.remove(tmp_path)
     return gdf
 
-# --- Rakendus ---
+# --- Streamlit ---
 st.title("Loomulik iive Eesti maakondades")
 st.markdown("Visualiseeri loomulik iive aastate lõikes Statistikaameti andmete põhjal.")
 
@@ -76,43 +76,29 @@ gdf = load_geojson()
 if df.empty or gdf is None:
     st.stop()
 
-# Veergude tühikute puhastamine
+# Veerunimed korda
 df.columns = df.columns.str.strip()
 
 # Aastavalik
 aastad = sorted(df["Aasta"].unique())
 valitud_aasta = st.sidebar.selectbox("Vali aasta", aastad)
-
-# Andmete filtreerimine
 df_aasta = df[df["Aasta"] == valitud_aasta]
 
-# Kontrollime veerge
-vajalikud_veerud = {"Maakond", "Sugu", "Loomulik iive"}
-if not vajalikud_veerud.issubset(df_aasta.columns):
-    st.error(f"Puuduvad vajalikud veerud: {vajalikud_veerud - set(df_aasta.columns)}")
+# Kontrollime, kas vajalikud veerud eksisteerivad
+required_cols = {"Mehed Loomulik iive", "Naised Loomulik iive", "Maakond"}
+if not required_cols.issubset(df_aasta.columns):
+    st.error(f"Puuduvad vajalikud veerud: {required_cols - set(df_aasta.columns)}")
     st.write("Veerud:", df_aasta.columns.tolist())
     st.stop()
 
-# Eemalda veergude tühikud
-df_aasta.columns = df_aasta.columns.str.strip()
-
-# Kontrolli, kas vajalikud veerud on olemas
-if not {"Mehed Loomulik iive", "Naised Loomulik iive", "Maakond"}.issubset(df_aasta.columns):
-    st.error("Puuduvad vajalikud veerud loomuliku iibe arvutamiseks.")
-    st.write("Veerud:", df_aasta.columns.tolist())
-    st.stop()
-
-# Arvuta koguloomulik iive
+# Arvutame loomuliku iibe kokku
 df_aasta["Loomulik iive"] = df_aasta["Mehed Loomulik iive"] + df_aasta["Naised Loomulik iive"]
-
-# Vali vajalikud veerud visualiseerimiseks
 df_pivot = df_aasta[["Maakond", "Loomulik iive"]]
 
-
-# Ühenda geoandmetega
+# Ühenda ruumiandmetega
 merged = gdf.merge(df_pivot, left_on="MNIMI", right_on="Maakond")
 
-# Visualiseeri
+# Joonista kaart
 fig, ax = plt.subplots(figsize=(8, 6))
 merged.plot(
     column="Loomulik iive",
