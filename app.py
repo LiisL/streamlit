@@ -78,6 +78,11 @@ st.markdown("Visualiseeri loomulik iive aastate lõikes Statistikaameti andmete 
 df = import_data()
 gdf = load_geojson()
 
+st.write("Laetud andmed:")
+st.dataframe(df.head())
+st.write("Veerud:", df.columns.tolist())
+
+
 if df.empty or gdf is None:
     st.stop()
 
