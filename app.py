@@ -100,6 +100,8 @@ if not required_cols.issubset(df_aasta.columns):
 # Arvutame loomuliku iibe kokku
 df_aasta["Loomulik iive"] = df_aasta["Mehed Loomulik iive"] + df_aasta["Naised Loomulik iive"]
 df_pivot = df_aasta[["Maakond", "Loomulik iive"]]
+st.write("GeoJSON maakonnad:", gdf["MNIMI"].unique())
+st.write("Andmete maakonnad:", df_pivot["Maakond"].unique())
 
 # Ühenda ruumiandmetega
 merged = gdf.merge(df_pivot, left_on="MNIMI", right_on="Maakond")
