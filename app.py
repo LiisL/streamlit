@@ -93,18 +93,21 @@ if not vajalikud_veerud.issubset(df_aasta.columns):
     st.write("Veerud:", df_aasta.columns.tolist())
     st.stop()
 
-# Pivot meeste ja naiste andmetest
-df_pivot = df_aasta.pivot_table(
-    index="Maakond", columns="Sugu", values="Loomulik iive", aggfunc="sum"
-).reset_index()
+# Eemalda veergude tühikud
+df_aasta.columns = df_aasta.columns.str.strip()
 
-# Summaveerg
-if 2 in df_pivot.columns and 3 in df_pivot.columns:
-    df_pivot["Loomulik iive"] = df_pivot[2] + df_pivot[3]
-else:
-    st.error("Puuduvad andmed meeste või naiste kohta.")
-    st.dataframe(df_pivot)
+# Kontrolli, kas vajalikud veerud on olemas
+if not {"Mehed Loomulik iive", "Naised Loomulik iive", "Maakond"}.issubset(df_aasta.columns):
+    st.error("Puuduvad vajalikud veerud loomuliku iibe arvutamiseks.")
+    st.write("Veerud:", df_aasta.columns.tolist())
     st.stop()
+
+# Arvuta koguloomulik iive
+df_aasta["Loomulik iive"] = df_aasta["Mehed Loomulik iive"] + df_aasta["Naised Loomulik iive"]
+
+# Vali vajalikud veerud visualiseerimiseks
+df_pivot = df_aasta[["Maakond", "Loomulik iive"]]
+
 
 # Ühenda geoandmetega
 merged = gdf.merge(df_pivot, left_on="MNIMI", right_on="Maakond")
