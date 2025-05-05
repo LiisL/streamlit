@@ -1,103 +1,115 @@
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-import json
-import requests
-from io import StringIO
 import matplotlib.pyplot as plt
+import requests
 import tempfile
 import os
+import json
+from io import StringIO
 
-# --- Statistikaameti API seaded ---
 STATISTIKAAMETI_API_URL = "https://andmed.stat.ee/api/v1/et/stat/RV032"
 
-JSON_PAYLOAD = {
+JSON_PAYLOAD_STR ="""{
   "query": [
     {
       "code": "Aasta",
       "selection": {
         "filter": "item",
-        "values": [str(aasta) for aasta in range(2014, 2024)]
+        "values": ["2014","2015","2016","2017","2018","2019","2020","2021","2022","2023"]
       }
     },
     {
       "code": "Maakond",
       "selection": {
         "filter": "item",
-        "values": [
-          "39", "44", "49", "51", "57", "59", "65", "67", "70",
-          "74", "78", "82", "84", "86"
-        ]
+        "values": ["39","44","49","51","57","59","65","67","70","74","78","82","84","86"]
       }
     },
     {
       "code": "Sugu",
       "selection": {
         "filter": "item",
-        "values": ["2", "3"]  # 2=Mehed, 3=Naised
+        "values": ["2","3"]
       }
     }
   ],
   "response": {
     "format": "csv"
   }
-}
+}"""
 
-# --- Andmete laadimine Statistikaametist ---
 @st.cache_data
 def import_data():
-    response = requests.post(STATISTIKAAMETI_API_URL, json=JSON_PAYLOAD)
+    headers = {'Content-Type': 'application/json'}
+    payload = json.loads(JSON_PAYLOAD_STR)
+    response = requests.post(STATISTIKAAMETI_API_URL, json=payload, headers=headers)
     if response.status_code == 200:
         text = response.content.decode('utf-8-sig')
         df = pd.read_csv(StringIO(text))
         return df
     else:
-        st.error(f"API viga: {response.status_code}")
+        st.error(f"API error {response.status_code}")
         return pd.DataFrame()
 
-# --- GeoJSON fail Google Drive'ist ---
 @st.cache_data
 def load_geojson():
     url = "https://drive.google.com/uc?export=download&id=15PWvqdxtp6HHIQIftsmHl4pMmWvG8mQX"
     response = requests.get(url)
-
     if response.status_code != 200:
-        st.error("Ei suutnud GeoJSON faili Google Drive'ist alla laadida.")
+        st.error("Ei suutnud geoandmeid alla laadida.")
         return None
-
     with tempfile.NamedTemporaryFile(delete=False, suffix=".geojson") as tmp_file:
         tmp_file.write(response.content)
         tmp_path = tmp_file.name
-
     gdf = gpd.read_file(tmp_path)
     os.remove(tmp_path)
     return gdf
 
-# --- Streamlit rakendus ---
+# --- Rakendus ---
 st.title("Loomulik iive Eesti maakondades")
 st.markdown("Visualiseeri loomulik iive aastate lõikes Statistikaameti andmete põhjal.")
 
-# Lae andmed
 df = import_data()
 gdf = load_geojson()
 
-# Aasta valik
+if df.empty or gdf is None:
+    st.stop()
+
+# Veergude tühikute puhastamine
+df.columns = df.columns.str.strip()
+
+# Aastavalik
 aastad = sorted(df["Aasta"].unique())
 valitud_aasta = st.sidebar.selectbox("Vali aasta", aastad)
 
-# Filtreeri andmed
+# Andmete filtreerimine
 df_aasta = df[df["Aasta"] == valitud_aasta]
 
-# Pivot: liida meeste ja naiste loomulik iive
+# Kontrollime veerge
+vajalikud_veerud = {"Maakond", "Sugu", "Loomulik iive"}
+if not vajalikud_veerud.issubset(df_aasta.columns):
+    st.error(f"Puuduvad vajalikud veerud: {vajalikud_veerud - set(df_aasta.columns)}")
+    st.write("Veerud:", df_aasta.columns.tolist())
+    st.stop()
+
+# Pivot meeste ja naiste andmetest
 df_pivot = df_aasta.pivot_table(
     index="Maakond", columns="Sugu", values="Loomulik iive", aggfunc="sum"
 ).reset_index()
-df_pivot["Loomulik iive"] = df_pivot[2] + df_pivot[3]
 
-# Ühenda ruumiandmetega
+# Summaveerg
+if 2 in df_pivot.columns and 3 in df_pivot.columns:
+    df_pivot["Loomulik iive"] = df_pivot[2] + df_pivot[3]
+else:
+    st.error("Puuduvad andmed meeste või naiste kohta.")
+    st.dataframe(df_pivot)
+    st.stop()
+
+# Ühenda geoandmetega
 merged = gdf.merge(df_pivot, left_on="MNIMI", right_on="Maakond")
 
-# --- Visualiseerimine ---
+# Visualiseeri
 fig, ax = plt.subplots(figsize=(8, 6))
 merged.plot(
     column="Loomulik iive",
@@ -107,6 +119,6 @@ merged.plot(
     legend=True,
     ax=ax
 )
-ax.set_title(f"Loomulik iive maakondade kaupa - {valitud_aasta}", fontsize=14)
+ax.set_title(f"Loomulik iive maakondade kaupa – {valitud_aasta}", fontsize=14)
 ax.axis("off")
 st.pyplot(fig)
