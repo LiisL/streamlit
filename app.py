@@ -76,13 +76,7 @@ st.title("Loomulik iive Eesti maakondades")
 st.markdown("Visualiseeri loomulik iive aastate lõikes Statistikaameti andmete põhjal.")
 
 df = import_data()
-st.write("Laetud andmed:")
-st.dataframe(df.head())
-st.write("Veerud:", df.columns.tolist())
 gdf = load_geojson()
-
-
-
 
 if df.empty or gdf is None:
     st.stop()
