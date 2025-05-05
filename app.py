@@ -24,12 +24,9 @@ JSON_PAYLOAD_STR ="""{
       "selection": {
         "filter": "item",
         "values": [
-  "001",  // Tallinn (valikuline)
-  "37",   // Harju maakond
-  "39", "44", "49", "51", "57", "59", "65", "67",
-  "70", "74", "78", "82", "84", "86"
-]
-
+          "001", "37", "39", "44", "49", "51", "57", "59", "65", "67",
+          "70", "74", "78", "82", "84", "86"
+        ]
       }
     },
     {
@@ -82,7 +79,6 @@ gdf = load_geojson()
 if df.empty or gdf is None:
     st.stop()
 
-# Veerunimed korda
 df.columns = df.columns.str.strip()
 
 # Aastavalik
@@ -90,23 +86,42 @@ aastad = sorted(df["Aasta"].unique())
 valitud_aasta = st.sidebar.selectbox("Vali aasta", aastad)
 df_aasta = df[df["Aasta"] == valitud_aasta]
 
-# Kontrollime, kas vajalikud veerud eksisteerivad
+# Veerukontroll
 required_cols = {"Mehed Loomulik iive", "Naised Loomulik iive", "Maakond"}
 if not required_cols.issubset(df_aasta.columns):
     st.error(f"Puuduvad vajalikud veerud: {required_cols - set(df_aasta.columns)}")
     st.write("Veerud:", df_aasta.columns.tolist())
     st.stop()
 
-# Arvutame loomuliku iibe kokku
+# Arvuta loomulik iive
 df_aasta["Loomulik iive"] = df_aasta["Mehed Loomulik iive"] + df_aasta["Naised Loomulik iive"]
 df_pivot = df_aasta[["Maakond", "Loomulik iive"]]
-st.write("GeoJSON maakonnad:", gdf["MNIMI"].unique())
-st.write("Andmete maakonnad:", df_pivot["Maakond"].unique())
+
+# Teisenda maakonnanimed sobivaks GeoJSON-iga
+nimi_asendused = {
+    "Harjumaa": "Harju maakond",
+    "Hiiumaa": "Hiiu maakond",
+    "Ida-Virumaa": "Ida-Viru maakond",
+    "Järvamaa": "Järva maakond",
+    "Jõgevamaa": "Jõgeva maakond",
+    "Läänemaa": "Lääne maakond",
+    "Lääne-Virumaa": "Lääne-Viru maakond",
+    "Põlvamaa": "Põlva maakond",
+    "Pärnumaa": "Pärnu maakond",
+    "Raplamaa": "Rapla maakond",
+    "Saaremaa": "Saare maakond",
+    "Tartumaa": "Tartu maakond",
+    "Valgamaa": "Valga maakond",
+    "Viljandimaa": "Viljandi maakond",
+    "Võrumaa": "Võru maakond",
+    "Tallinn": "Harju maakond"
+}
+df_pivot["Maakond"] = df_pivot["Maakond"].replace(nimi_asendused)
 
 # Ühenda ruumiandmetega
 merged = gdf.merge(df_pivot, left_on="MNIMI", right_on="Maakond")
 
-# Joonista kaart
+# Kaart
 fig, ax = plt.subplots(figsize=(8, 6))
 merged.plot(
     column="Loomulik iive",
