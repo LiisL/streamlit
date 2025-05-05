@@ -68,6 +68,8 @@ def load_geojson():
     gdf = gpd.read_file(tmp_path)
     os.remove(tmp_path)
     return gdf
+st.write("Kõik andmeread Harju maakonnast:")
+st.dataframe(df[df["Maakond"].str.contains("Harju|Tallinn", case=False, na=False)])
 
 # --- Streamlit ---
 st.title("Loomulik iive Eesti maakondades")
