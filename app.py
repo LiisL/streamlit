@@ -121,7 +121,7 @@ df_pivot["Maakond"] = df_pivot["Maakond"].replace(nimi_asendused)
 # Ühenda ruumiandmetega
 merged = gdf.merge(df_pivot, left_on="MNIMI", right_on="Maakond")
 
-# Kaart
+# Kaart koos legendi sildiga
 fig, ax = plt.subplots(figsize=(8, 6))
 merged.plot(
     column="Loomulik iive",
@@ -129,8 +129,10 @@ merged.plot(
     linewidth=0.8,
     edgecolor="0.8",
     legend=True,
+    legend_kwds={"label": "Loomulik iive"},  # ← See rida lisab sildi legendile
     ax=ax
 )
 ax.set_title(f"Loomulik iive maakondade kaupa – {valitud_aasta}", fontsize=14)
 ax.axis("off")
 st.pyplot(fig)
+
